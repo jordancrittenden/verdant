@@ -90,6 +90,7 @@ let mapStyles = [
 ];
 
 let map;
+let userLocation;
 
 function initMap() {
 	map = new google.maps.Map(document.getElementById("map"), {
@@ -129,9 +130,23 @@ function drawData(markers) {
 			fillOpacity: 0.35,
 			map,
 			center: { lat: marker.loc.latitude, lng: marker.loc.longitude },
-			radius: 50,
+			radius: 5,
 		});
 	}
+}
+
+function updateLocation(position) {
+	let loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+	if (!userLocation) {
+		userLocation = new google.maps.Marker({
+			position: loc,
+			map,
+			title: "You are here",
+		});
+	} else {
+		userLocation.setPosition(loc);
+	}
+	map.panTo(loc);
 }
 
 // Initialize Firestore through Firebase
@@ -148,3 +163,50 @@ db.collection("reports").get().then((querySnapshot) => {
 	querySnapshot.forEach((doc) => markers.push(doc.data()));
 	drawData(markers);
 });
+
+function reportAtLocation(position, type) {
+	let data = {
+		loc: new firebase.firestore.GeoPoint(position.coords.latitude, position.coords.longitude),
+		type: type
+	};
+
+	db.collection("reports").add(data)
+		.then(function(docRef) {
+				console.log("Document written with ID: ", docRef.id);
+				markers.push(data);
+				drawData(data);
+		})
+		.catch(function(error) {
+				console.error("Error adding document: ", error);
+		});
+}
+
+function reportAtCurrentLocation(type) {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((position) => {
+			reportAtLocation(position, type);
+		}, (err) => {
+			console.log("some dank shit happened: " + err);
+		});
+  } else {
+    console.log("Geolocation is not supported by this browser.");
+  }
+}
+
+window.onload = function () {
+	document.querySelectorAll("#buttons > button").forEach((btn) => {
+		btn.onclick = function() {
+			reportAtCurrentLocation(btn.id);
+		};
+	});
+
+	id = navigator.geolocation.watchPosition((position) => {
+		updateLocation(position);
+	}, (err) => {
+		console.warn('ERROR(' + err.code + '): ' + err.message);
+	}, {
+		enableHighAccuracy: true,
+		timeout: 5000,
+		maximumAge: 0
+	});
+}
