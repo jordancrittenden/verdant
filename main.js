@@ -174,7 +174,7 @@ function reportAtLocation(position, type) {
 		.then(function(docRef) {
 				console.log("Document written with ID: ", docRef.id);
 				markers.push(data);
-				drawData(data);
+				drawData([ data ]);
 		})
 		.catch(function(error) {
 				console.error("Error adding document: ", error);
